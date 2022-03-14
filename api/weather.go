@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 )
@@ -29,10 +30,17 @@ func Get(query string) (*http.Response, error) {
 }
 
 func GetWeather(w http.ResponseWriter, r *http.Request) {
-	resp, err := Get("Sydney")
+	query := r.URL.Query().Get("query")
+	if query == "" {
+		query = "Sydney"
+	}
+	log.Println("Looking up:", query)
+
+	resp, err := Get(query)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusInternalServerError)
 	}
+
 	defer resp.Body.Close()
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
 
