@@ -22,7 +22,7 @@ docker build -t weatherapi .
 Then, run the service with the following:
 
 ```
-docker run -p 8080:8080 weatherapi
+docker run -p 8080:8080 -e WEATHERSTACK_KEY="your_key_here" weatherapi
 ```
 
 After the service is spinning, you can `curl` it with:
