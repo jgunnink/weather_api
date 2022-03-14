@@ -30,3 +30,7 @@ After the service is spinning, you can `curl` it with:
 ```
 http://localhost:8080/v1/weather?city=sydney
 ```
+
+### Resources:
+
+- https://www.thegreatcodeadventure.com/mocking-http-requests-in-golang/

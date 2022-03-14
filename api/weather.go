@@ -7,9 +7,29 @@ import (
 	"os"
 )
 
-func GetWeather(w http.ResponseWriter, r *http.Request) {
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+var (
+	Client HTTPClient
+)
+
+func init() {
+	Client = &http.Client{}
+}
+
+func Get(query string) (*http.Response, error) {
 	weatherstack_key := os.Getenv("WEATHERSTACK_KEY")
-	resp, err := http.Get("http://api.weatherstack.com/current?access_key=" + weatherstack_key + "&query=Sydney")
+	request, err := http.NewRequest(http.MethodGet, "http://api.weatherstack.com/current?access_key="+weatherstack_key+"&query="+query, nil)
+	if err != nil {
+		return nil, err
+	}
+	return Client.Do(request)
+}
+
+func GetWeather(w http.ResponseWriter, r *http.Request) {
+	resp, err := Get("Sydney")
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusInternalServerError)
 	}
