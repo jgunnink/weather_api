@@ -1,8 +1,8 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +10,11 @@ import (
 
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
+}
+
+type WeatherResponse struct {
+	Wind_speed          int `json:"wind_speed"`
+	Temperature_degrees int `json:"temperature_degrees"`
 }
 
 var (
@@ -42,8 +47,19 @@ func GetWeather(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer resp.Body.Close()
-	bodyBytes, _ := ioutil.ReadAll(resp.Body)
 
-	w.Write(bodyBytes)
+	var data map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		print(err)
+	}
 
+	wind_speed := data["current"].(map[string]interface{})["wind_speed"].(float64)
+	temperature_degrees := data["current"].(map[string]interface{})["temperature"].(float64)
+	weather_response := WeatherResponse{
+		Wind_speed:          int(wind_speed),
+		Temperature_degrees: int(temperature_degrees),
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(weather_response)
 }
