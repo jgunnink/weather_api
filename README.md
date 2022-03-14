@@ -33,4 +33,5 @@ http://localhost:8080/v1/weather?city=sydney
 
 ### Resources:
 
-- https://www.thegreatcodeadventure.com/mocking-http-requests-in-golang/
+- mocking http requests https://www.thegreatcodeadventure.com/mocking-http-requests-in-golang/
+- strip newline chars https://topherpedersen.blog/2020/02/03/how-to-strip-newline-characters-from-a-string-in-golang/

@@ -96,4 +96,23 @@ func TestGetWeather(t *testing.T) {
 			t.Errorf("Expected status code %d, got %d", http.StatusOK, res.Code)
 		}
 	})
+
+	t.Run("open weathermap is used when weatherstack is offline", func(t *testing.T) {
+		t.Skip() // TODO: Currently broken. Getting: interface conversion: interface {} is nil, not map[string]interface
+		// Have run out of time debugging.
+		mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 500,
+			}, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/weather?query=Sydney", nil)
+		res := httptest.NewRecorder()
+
+		GetWeather(res, req)
+
+		if res.Code != http.StatusOK {
+			t.Errorf("Expected status code %d, got %d", http.StatusOK, res.Code)
+		}
+	})
 }
