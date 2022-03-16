@@ -114,8 +114,9 @@ func TestGetWeather(t *testing.T) {
 	})
 
 	t.Run("open weathermap is used when weatherstack is offline", func(t *testing.T) {
-		t.Skip() // TODO: Currently broken. Getting: interface conversion: interface {} is nil, not map[string]interface
-		// Have run out of time debugging.
+		t.Skip() // TODO: Currently broken. Mocking the getdofunc to return a 500 also fails the second request.
+		// Need to work out how to mock the request once, and the subsequent request to return a 200 with a sample payload.
+		// from the OpenWeatherMap API.
 		mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: 500,
