@@ -71,8 +71,8 @@ func GetWeather(w http.ResponseWriter, r *http.Request) {
 
 		weather_response, err = setOpenWeather(resp, data)
 		if err != nil {
-			// If we get two invalid responses from our upstream, then we should respond to our user with a 502
-			http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusBadGateway)
+			// If we get two invalid responses from our upstream, then we should respond to our user with a 503
+			http.Error(w, fmt.Sprint(err), http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -82,12 +82,20 @@ func GetWeather(w http.ResponseWriter, r *http.Request) {
 }
 
 func setWeatherStack(resp *http.Response, data map[string]interface{}) (WeatherResponse, error) {
-	if resp.Body == nil {
+	if resp == nil || resp.Body == nil {
 		return WeatherResponse{}, fmt.Errorf("no response body from WeatherStack")
 	}
 
 	defer resp.Body.Close()
-	json.NewDecoder(resp.Body).Decode(&data)
+	err := json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		return WeatherResponse{}, err
+	}
+
+	if data["error"] != nil {
+		return WeatherResponse{}, fmt.Errorf("error: %s", data["error"].(map[string]interface{})["info"])
+	}
+
 	wind_speed := data["current"].(map[string]interface{})["wind_speed"].(float64)
 	temperature_degrees := data["current"].(map[string]interface{})["temperature"].(float64)
 
@@ -98,12 +106,20 @@ func setWeatherStack(resp *http.Response, data map[string]interface{}) (WeatherR
 }
 
 func setOpenWeather(resp *http.Response, data map[string]interface{}) (WeatherResponse, error) {
-	if resp.Body == nil {
+	if resp == nil || resp.Body == nil {
 		return WeatherResponse{}, fmt.Errorf("no response body from OpenWeather")
 	}
 
 	defer resp.Body.Close()
-	json.NewDecoder(resp.Body).Decode(&data)
+	err := json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		return WeatherResponse{}, err
+	}
+
+	if data["cod"] == "404" {
+		return WeatherResponse{}, fmt.Errorf("error: %s", data["message"])
+	}
+
 	wind_speed := data["wind"].(map[string]interface{})["speed"].(float64)
 	temperature_degrees := data["main"].(map[string]interface{})["temp"].(float64)
 
