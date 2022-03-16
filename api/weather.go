@@ -3,9 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 )
 
 type HTTPClient interface {
@@ -17,34 +15,6 @@ type WeatherResponse struct {
 	Temperature_degrees int `json:"temperature_degrees"`
 }
 
-var (
-	Client HTTPClient
-)
-
-func init() {
-	Client = &http.Client{}
-}
-
-func GetFromWeatherStack(query string) (*http.Response, error) {
-	log.Println("Looking up:", query, "on Weather Stack")
-	weatherstack_key := os.Getenv("WEATHERSTACK_KEY")
-	request, err := http.NewRequest(http.MethodGet, "http://api.weatherstack.com/current?access_key="+weatherstack_key+"&query="+query, nil)
-	if err != nil {
-		return nil, err
-	}
-	return Client.Do(request)
-}
-
-func GetFromOpenWeatherMap(query string) (*http.Response, error) {
-	log.Println("Looking up:", query, "on Open Weather Map")
-	openweathermap_key := os.Getenv("OPENWEATHERMAP_KEY")
-	request, err := http.NewRequest(http.MethodGet, "http://api.openweathermap.org/data/2.5/weather?q="+query+"&units=metric&appid="+openweathermap_key, nil)
-	if err != nil {
-		return nil, err
-	}
-	return Client.Do(request)
-}
-
 func GetWeather(w http.ResponseWriter, r *http.Request) {
 	var data map[string]interface{}
 	var weather_response WeatherResponse
@@ -54,48 +24,52 @@ func GetWeather(w http.ResponseWriter, r *http.Request) {
 		query = "Sydney"
 	}
 
-	resp, err := GetFromWeatherStack(query)
+	weather_response, err := tryWeatherStack(query, data)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusInternalServerError)
-		return
+		// If we get a failure from WeatherStack, try OpenWeatherMap
+		weather_response, err = tryOpenWeatherMap(query, data)
 	}
-	weather_response, err = setWeatherStack(resp, data)
-
-	// If we get a failure from WeatherStack, try OpenWeatherMap
 	if err != nil {
-		resp, err := GetFromOpenWeatherMap(query)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusInternalServerError)
-			return
-		}
-
-		weather_response, err = setOpenWeather(resp, data)
-		if err != nil {
-			// If we get two invalid responses from our upstream, then we should respond to our user with a 503
-			http.Error(w, fmt.Sprint(err), http.StatusServiceUnavailable)
-			return
-		}
+		http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusServiceUnavailable)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(weather_response)
 }
 
-func setWeatherStack(resp *http.Response, data map[string]interface{}) (WeatherResponse, error) {
-	if resp == nil || resp.Body == nil {
-		return WeatherResponse{}, fmt.Errorf("no response body from WeatherStack")
-	}
+func tryWeatherStack(query string, data map[string]interface{}) (WeatherResponse, error) {
+	resp, err := GetFromWeatherStack(query)
 
-	defer resp.Body.Close()
-	err := json.NewDecoder(resp.Body).Decode(&data)
 	if err != nil {
 		return WeatherResponse{}, err
 	}
-
-	if data["error"] != nil {
-		return WeatherResponse{}, fmt.Errorf("error: %s", data["error"].(map[string]interface{})["info"])
+	if err := ValidateServiceResponse(resp); err != nil {
+		return WeatherResponse{}, err
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return WeatherResponse{}, err
 	}
 
+	return setWeatherStack(resp, data)
+}
+
+func tryOpenWeatherMap(query string, data map[string]interface{}) (WeatherResponse, error) {
+	resp, err := GetFromOpenWeatherMap(query)
+	if err != nil {
+		return WeatherResponse{}, err
+	}
+	err = ValidateServiceResponse(resp)
+	if err != nil {
+		return WeatherResponse{}, err
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return WeatherResponse{}, err
+	}
+	return setOpenWeather(resp, data)
+}
+
+func setWeatherStack(resp *http.Response, data map[string]interface{}) (WeatherResponse, error) {
 	wind_speed := data["current"].(map[string]interface{})["wind_speed"].(float64)
 	temperature_degrees := data["current"].(map[string]interface{})["temperature"].(float64)
 
@@ -106,20 +80,6 @@ func setWeatherStack(resp *http.Response, data map[string]interface{}) (WeatherR
 }
 
 func setOpenWeather(resp *http.Response, data map[string]interface{}) (WeatherResponse, error) {
-	if resp == nil || resp.Body == nil {
-		return WeatherResponse{}, fmt.Errorf("no response body from OpenWeather")
-	}
-
-	defer resp.Body.Close()
-	err := json.NewDecoder(resp.Body).Decode(&data)
-	if err != nil {
-		return WeatherResponse{}, err
-	}
-
-	if data["cod"] == "404" {
-		return WeatherResponse{}, fmt.Errorf("error: %s", data["message"])
-	}
-
 	wind_speed := data["wind"].(map[string]interface{})["speed"].(float64)
 	temperature_degrees := data["main"].(map[string]interface{})["temp"].(float64)
 
