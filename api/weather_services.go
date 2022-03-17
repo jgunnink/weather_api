@@ -46,7 +46,7 @@ func GetFromOpenWeatherMap(query string) (*http.Response, error) {
 	return Client.Do(request)
 }
 
-func ValidateServiceResponse(resp *http.Response) error {
+func ValidateUpstreamResponse(resp *http.Response) error {
 	if resp.StatusCode != http.StatusOK {
 		switch resp.StatusCode {
 		case http.StatusNotFound:

@@ -56,7 +56,7 @@ func TestValidateServiceResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ValidateServiceResponse(tt.args.resp); (err != nil) != tt.wantErr {
+			if err := ValidateUpstreamResponse(tt.args.resp); (err != nil) != tt.wantErr {
 				t.Errorf("ValidateServiceResponse() error = %v, wantErr %v", err, tt.err)
 			}
 		})
