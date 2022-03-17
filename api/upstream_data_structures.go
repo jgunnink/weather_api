@@ -34,7 +34,6 @@ type WeatherStackResponse struct {
 		Feelslike           int      `json:"feelslike"`
 		UvIndex             int      `json:"uv_index"`
 		Visibility          int      `json:"visibility"`
-		IsDay               string   `json:"is_day"`
 	} `json:"current"`
 }
 
@@ -79,4 +78,13 @@ type OpenWeatherMapResponse struct {
 	ID       int    `json:"id"`
 	Name     string `json:"name"`
 	Cod      int    `json:"cod"`
+}
+
+type WeatherStackCustomResponse struct {
+	Success bool `json:"success"`
+	Error   struct {
+		Code int    `json:"code"`
+		Type string `json:"type"`
+		Info string `json:"info"`
+	} `json:"error"`
 }

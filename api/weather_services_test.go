@@ -22,6 +22,8 @@ func TestValidateServiceResponse(t *testing.T) {
 					StatusCode: http.StatusOK,
 				},
 			},
+			wantErr: false,
+			err:     nil,
 		},
 		{
 			name: "StatusNotFound",

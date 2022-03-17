@@ -23,7 +23,7 @@ func TestGetWeather(t *testing.T) {
 
 	r := ioutil.NopCloser(bytes.NewReader([]byte(weatherstack_api_response)))
 
-	t.Run("when no query string is provided, it defaults to Sydney", func(t *testing.T) {
+	t.Run("When no query string is provided, it defaults to Sydney", func(t *testing.T) {
 		mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: 200,
@@ -115,10 +115,104 @@ func TestGetWeather(t *testing.T) {
 		}
 	})
 
+	t.Run("When the city cannot be found", func(t *testing.T) {
+		mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 404,
+				Body:       r,
+			}, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/weather", nil)
+		res := httptest.NewRecorder()
+
+		GetWeather(res, req)
+
+		if res.Code != http.StatusServiceUnavailable {
+			t.Errorf("Expected status code %d, got %d", http.StatusServiceUnavailable, res.Code)
+		}
+	})
+
+	t.Run("When there are too many requests", func(t *testing.T) {
+		mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusTooManyRequests,
+				Body:       r,
+			}, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/weather", nil)
+		res := httptest.NewRecorder()
+
+		GetWeather(res, req)
+
+		if res.Code != http.StatusServiceUnavailable {
+			t.Errorf("Expected status code %d, got %d", http.StatusServiceUnavailable, res.Code)
+		}
+	})
+
+	t.Run("When there is a timeout from the upstream", func(t *testing.T) {
+		mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusGatewayTimeout,
+				Body:       nil,
+			}, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/weather", nil)
+		res := httptest.NewRecorder()
+
+		GetWeather(res, req)
+
+		if res.Code != http.StatusServiceUnavailable {
+			t.Errorf("Expected status code %d, got %d", http.StatusServiceUnavailable, res.Code)
+		}
+	})
+
+	t.Run("When there is some other status code", func(t *testing.T) {
+		mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusTeapot,
+				Body:       nil,
+			}, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/weather", nil)
+		res := httptest.NewRecorder()
+
+		GetWeather(res, req)
+
+		if res.Code != http.StatusServiceUnavailable {
+			t.Errorf("Expected status code %d, got %d", http.StatusServiceUnavailable, res.Code)
+		}
+	})
+
+	t.Run("When WeatherStack responds with a custom error on a status 200", func(t *testing.T) {
+		customResponse := `{"success":false,"error":{"code":615,"type":"request_failed","info":"Your API request failed. Please try again or contact support."}}`
+		cr := ioutil.NopCloser(bytes.NewReader([]byte(customResponse)))
+
+		mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       cr,
+			}, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/weather?potato=Sydney", nil)
+		res := httptest.NewRecorder()
+
+		GetWeather(res, req)
+
+		if res.Code != http.StatusServiceUnavailable {
+			t.Errorf("Expected status code %d, got %d", http.StatusServiceUnavailable, res.Code)
+		}
+	})
+
+	// TODO: Currently broken. Mocking the getdofunc to return a 500 also fails the second request.
+	// Need to work out how to mock the request once, and the subsequent request to return a 200 with a sample payload.
+	// from the OpenWeatherMap API.
 	t.Run("open weathermap is used when weatherstack is offline", func(t *testing.T) {
-		t.Skip() // TODO: Currently broken. Mocking the getdofunc to return a 500 also fails the second request.
-		// Need to work out how to mock the request once, and the subsequent request to return a 200 with a sample payload.
-		// from the OpenWeatherMap API.
+		t.Skip()
 		mocks.GetDoFunc = func(*http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: 500,

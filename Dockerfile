@@ -1,7 +1,7 @@
 FROM golang:1.18-alpine as builder
 WORKDIR /build
 ADD . .
-RUN CGO_ENABLED=0 go build -o weatherapi
+RUN CGO_ENABLED=0 go build -o weatherapi -buildvcs=false
 
 FROM scratch
 COPY --from=alpine:latest /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
