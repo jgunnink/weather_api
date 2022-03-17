@@ -16,18 +16,19 @@ type WeatherResponse struct {
 }
 
 func GetWeather(w http.ResponseWriter, r *http.Request) {
-	var data map[string]interface{}
-	var weather_response WeatherResponse
+	var wsr WeatherStackResponse
+	var owmr OpenWeatherMapResponse
+	var client_response WeatherResponse
 
 	query := r.URL.Query().Get("query")
 	if query == "" {
 		query = "Sydney"
 	}
 
-	weather_response, err := tryWeatherStack(query, data)
+	client_response, err := tryWeatherStack(query, wsr)
 	if err != nil {
 		// If we get a failure from WeatherStack, try OpenWeatherMap
-		weather_response, err = tryOpenWeatherMap(query, data)
+		client_response, err = tryOpenWeatherMap(query, owmr)
 	}
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusServiceUnavailable)
@@ -35,10 +36,10 @@ func GetWeather(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(weather_response)
+	json.NewEncoder(w).Encode(client_response)
 }
 
-func tryWeatherStack(query string, data map[string]interface{}) (WeatherResponse, error) {
+func tryWeatherStack(query string, data WeatherStackResponse) (WeatherResponse, error) {
 	resp, err := GetFromWeatherStack(query)
 
 	if err != nil {
@@ -51,40 +52,39 @@ func tryWeatherStack(query string, data map[string]interface{}) (WeatherResponse
 		return WeatherResponse{}, err
 	}
 
-	return setWeatherStack(resp, data)
+	return setWeatherStack(resp, data), nil
 }
 
-func tryOpenWeatherMap(query string, data map[string]interface{}) (WeatherResponse, error) {
+func tryOpenWeatherMap(query string, data OpenWeatherMapResponse) (WeatherResponse, error) {
 	resp, err := GetFromOpenWeatherMap(query)
 	if err != nil {
 		return WeatherResponse{}, err
 	}
-	err = ValidateServiceResponse(resp)
-	if err != nil {
+	if err := ValidateServiceResponse(resp); err != nil {
 		return WeatherResponse{}, err
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return WeatherResponse{}, err
 	}
-	return setOpenWeather(resp, data)
+	return setOpenWeather(resp, data), nil
 }
 
-func setWeatherStack(resp *http.Response, data map[string]interface{}) (WeatherResponse, error) {
-	wind_speed := data["current"].(map[string]interface{})["wind_speed"].(float64)
-	temperature_degrees := data["current"].(map[string]interface{})["temperature"].(float64)
+func setWeatherStack(resp *http.Response, data WeatherStackResponse) WeatherResponse {
+	wind_speed := data.Current.WindSpeed
+	temperature_degrees := data.Current.Temperature
 
 	return WeatherResponse{
 		Wind_speed:          int(wind_speed),
 		Temperature_degrees: int(temperature_degrees),
-	}, nil
+	}
 }
 
-func setOpenWeather(resp *http.Response, data map[string]interface{}) (WeatherResponse, error) {
-	wind_speed := data["wind"].(map[string]interface{})["speed"].(float64)
-	temperature_degrees := data["main"].(map[string]interface{})["temp"].(float64)
+func setOpenWeather(resp *http.Response, data OpenWeatherMapResponse) WeatherResponse {
+	wind_speed := data.Wind.Speed
+	temperature_degrees := data.Wind.Speed
 
 	return WeatherResponse{
 		Wind_speed:          int(wind_speed),
 		Temperature_degrees: int(temperature_degrees),
-	}, nil
+	}
 }

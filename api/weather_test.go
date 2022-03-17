@@ -19,6 +19,8 @@ func init() {
 func TestGetWeather(t *testing.T) {
 	Client = &mocks.MockClient{}
 	weatherstack_api_response := `{"request":{"type":"City","query":"Sydney, Australia","language":"en","unit":"m"},"location":{"name":"Sydney","country":"Australia","region":"New South Wales","lat":"-33.883","lon":"151.217","timezone_id":"Australia\/Sydney","localtime":"2022-03-14 17:20","localtime_epoch":1647278400,"utc_offset":"11.0"},"current":{"observation_time":"06:20 AM","temperature":22,"weather_code":116,"weather_icons":["https:\/\/assets.weatherstack.com\/images\/wsymbols01_png_64\/wsymbol_0002_sunny_intervals.png"],"weather_descriptions":["Partly cloudy"],"wind_speed":15,"wind_degree":170,"wind_dir":"S","pressure":1020,"precip":0,"humidity":78,"cloudcover":75,"feelslike":25,"uv_index":6,"visibility":10,"is_day":"yes"}}`
+	// openweathermap_api_response := `{"coord": {"lon": -122.08,"lat": 37.39},"weather": [{"id": 800,"main": "Clear","description": "clear sky","icon": "01d"}],"base": "stations","main": {"temp": 282.55,"feels_like": 281.86,"temp_min": 280.37,"temp_max": 284.26,"pressure": 1023,"humidity": 100},"visibility": 10000,"wind": {"speed": 1.5,"deg": 350},"clouds": {"all": 1},"dt": 1560350645,"sys": {"type": 1,"id": 5122,"message": 0.0139,"country": "US","sunrise": 1560343627,"sunset": 1560396563},"timezone": -25200,"id": 420006353,"name": "Mountain View","cod": 200}`
+
 	r := ioutil.NopCloser(bytes.NewReader([]byte(weatherstack_api_response)))
 
 	t.Run("when no query string is provided, it defaults to Sydney", func(t *testing.T) {
