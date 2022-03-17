@@ -1,4 +1,4 @@
-FROM golang:1.17-alpine as builder
+FROM golang:1.18-alpine as builder
 WORKDIR /build
 ADD . .
 RUN CGO_ENABLED=0 go build -o weatherapi
